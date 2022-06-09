@@ -1,0 +1,10 @@
+[package]
+name = "compressonator"
+version = "0.1.0"
+authors = ["Gregory Mitrano <gregory.mitrano@gmail.com>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+compressonator-sys = { git = "https://github.com/impakt73/compressonator-sys.git" }
