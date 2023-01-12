@@ -1,19 +1,17 @@
+use std::os::raw::c_void;
+
 use compressonator_sys as sys;
 
 use anyhow::Result;
 use image::io::Reader as ImageReader;
 
-pub fn compress_block_bc7(input_block: &[u8], output_block: &mut [u8]) -> bool {
+fn compress_block_bc7(options: *mut c_void, input_block: &[u8], output_block: &mut [u8]) -> bool {
     unsafe {
-        sys::CompressBlockBC7(
-            input_block.as_ptr(),
-            16,
-            output_block.as_mut_ptr(),
-            core::ptr::null(),
-        ) == 0
+        sys::CompressBlockBC7(input_block.as_ptr(), 16, output_block.as_mut_ptr(), options) == 0
     }
 }
 
+#[allow(dead_code)]
 pub fn compress_block_bc5(input_block: &[u8], output_block: &mut [u8]) -> bool {
     unsafe {
         sys::CompressBlockBC5(
@@ -27,7 +25,8 @@ pub fn compress_block_bc5(input_block: &[u8], output_block: &mut [u8]) -> bool {
     }
 }
 
-pub fn compress_block_bc4(input_block: &[u8], output_block: &mut [u8]) -> bool {
+#[allow(dead_code)]
+fn compress_block_bc4(input_block: &[u8], output_block: &mut [u8]) -> bool {
     unsafe {
         sys::CompressBlockBC4(
             input_block.as_ptr(),
@@ -38,7 +37,7 @@ pub fn compress_block_bc4(input_block: &[u8], output_block: &mut [u8]) -> bool {
     }
 }
 
-pub fn decompress_block_bc7(input_block: &[u8], output_block: &mut [u8]) -> bool {
+fn decompress_block_bc7(input_block: &[u8], output_block: &mut [u8]) -> bool {
     unsafe {
         sys::DecompressBlockBC7(
             input_block.as_ptr(),
@@ -48,7 +47,8 @@ pub fn decompress_block_bc7(input_block: &[u8], output_block: &mut [u8]) -> bool
     }
 }
 
-pub fn decompress_block_bc5(input_block: &[u8], output_block: &mut [u8]) -> bool {
+#[allow(dead_code)]
+fn decompress_block_bc5(input_block: &[u8], output_block: &mut [u8]) -> bool {
     unsafe {
         sys::DecompressBlockBC5(
             input_block.as_ptr(),
@@ -59,7 +59,8 @@ pub fn decompress_block_bc5(input_block: &[u8], output_block: &mut [u8]) -> bool
     }
 }
 
-pub fn decompress_block_bc4(input_block: &[u8], output_block: &mut [u8]) -> bool {
+#[allow(dead_code)]
+fn decompress_block_bc4(input_block: &[u8], output_block: &mut [u8]) -> bool {
     unsafe {
         sys::DecompressBlockBC4(
             input_block.as_ptr(),
@@ -90,7 +91,7 @@ pub fn load_image_data(path: &str) -> Result<RGBAImageData> {
     Ok(image_data)
 }
 
-pub fn compress_image_bc7(image: &RGBAImageData) -> Result<Vec<u8>> {
+pub fn compress_image_bc7(image: &RGBAImageData, quality: f32) -> Result<Vec<u8>> {
     assert!(image.width % 4 == 0);
     assert!(image.height % 4 == 0);
 
@@ -100,6 +101,12 @@ pub fn compress_image_bc7(image: &RGBAImageData) -> Result<Vec<u8>> {
 
     let mut input_block = [0_u8; 64];
     let mut output_block = [0_u8; 16];
+
+    let mut options = core::ptr::null_mut();
+    unsafe {
+        sys::CreateOptionsBC7(&mut options);
+        sys::SetQualityBC7(options, quality);
+    }
 
     let mut output_blocks = Vec::with_capacity((num_blocks * 16) as usize);
 
@@ -122,9 +129,13 @@ pub fn compress_image_bc7(image: &RGBAImageData) -> Result<Vec<u8>> {
                 }
             }
 
-            compress_block_bc7(&input_block, &mut output_block);
+            compress_block_bc7(options, &input_block, &mut output_block);
             output_blocks.extend_from_slice(&output_block);
         }
+    }
+
+    unsafe {
+        sys::DestroyOptionsBC7(options);
     }
 
     Ok(output_blocks)
@@ -179,7 +190,11 @@ mod tests {
     fn compress_bc7() {
         let input_block = [0_u8; 64];
         let mut output_block = [0_u8; 16];
-        assert!(compress_block_bc7(&input_block, &mut output_block));
+        assert!(compress_block_bc7(
+            core::ptr::null_mut(),
+            &input_block,
+            &mut output_block
+        ));
     }
 
     #[test]
