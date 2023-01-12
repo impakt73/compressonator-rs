@@ -12,7 +12,7 @@ fn compress_block_bc7(options: *mut c_void, input_block: &[u8], output_block: &m
 }
 
 #[allow(dead_code)]
-pub fn compress_block_bc5(input_block: &[u8], output_block: &mut [u8]) -> bool {
+fn compress_block_bc5(options: *mut c_void, input_block: &[u8], output_block: &mut [u8]) -> bool {
     unsafe {
         sys::CompressBlockBC5(
             input_block.as_ptr(),
@@ -20,7 +20,7 @@ pub fn compress_block_bc5(input_block: &[u8], output_block: &mut [u8]) -> bool {
             input_block.as_ptr().add(16),
             4,
             output_block.as_mut_ptr(),
-            core::ptr::null(),
+            options,
         ) == 0
     }
 }
@@ -182,6 +182,49 @@ pub fn decompress_image_bc7(width: u32, height: u32, data: &[u8]) -> Result<RGBA
     Ok(image_data)
 }
 
+pub fn compress_image_bc5(image: &RGBAImageData, quality: f32) -> Result<Vec<u8>> {
+    assert!(image.width % 4 == 0);
+    assert!(image.height % 4 == 0);
+
+    let width_in_blocks = image.width / 4;
+    let height_in_blocks = image.height / 4;
+    let num_blocks = width_in_blocks * height_in_blocks;
+
+    let mut input_block = [0_u8; 32];
+    let mut output_block = [0_u8; 16];
+
+    let mut options = core::ptr::null_mut();
+    unsafe {
+        sys::CreateOptionsBC5(&mut options);
+        sys::SetQualityBC5(options, quality);
+    }
+
+    let mut output_blocks = Vec::with_capacity((num_blocks * 16) as usize);
+
+    for block_y in 0..height_in_blocks {
+        for block_x in 0..width_in_blocks {
+            for y in 0..4 {
+                for x in 0..4 {
+                    let index =
+                        (((block_y * 4 + y) * image.width + (block_x * 4 + x)) * 4) as usize;
+                    let pixel = [image.pixels[index], image.pixels[index + 1]];
+                    input_block[(y * 4 + x) as usize] = pixel[0];
+                    input_block[(16 + (y * 4 + x)) as usize] = pixel[1];
+                }
+            }
+
+            compress_block_bc5(options, &input_block, &mut output_block);
+            output_blocks.extend_from_slice(&output_block);
+        }
+    }
+
+    unsafe {
+        sys::DestroyOptionsBC5(options);
+    }
+
+    Ok(output_blocks)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -208,7 +251,11 @@ mod tests {
     fn compress_bc5() {
         let input_block = [0_u8; 32];
         let mut output_block = [0_u8; 16];
-        assert!(compress_block_bc5(&input_block, &mut output_block));
+        assert!(compress_block_bc5(
+            core::ptr::null_mut(),
+            &input_block,
+            &mut output_block
+        ));
     }
 
     #[test]
