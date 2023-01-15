@@ -91,12 +91,12 @@ pub fn load_image_data(path: &str) -> Result<RGBAImageData> {
     Ok(image_data)
 }
 
-pub fn compress_image_bc7(image: &RGBAImageData, quality: f32) -> Result<Vec<u8>> {
-    assert!(image.width % 4 == 0);
-    assert!(image.height % 4 == 0);
+pub fn compress_image_bc7(width: u32, height: u32, pixels: &[u8], quality: f32) -> Result<Vec<u8>> {
+    assert!(width % 4 == 0);
+    assert!(height % 4 == 0);
 
-    let width_in_blocks = image.width / 4;
-    let height_in_blocks = image.height / 4;
+    let width_in_blocks = width / 4;
+    let height_in_blocks = height / 4;
     let num_blocks = width_in_blocks * height_in_blocks;
 
     let mut input_block = [0_u8; 64];
@@ -115,12 +115,12 @@ pub fn compress_image_bc7(image: &RGBAImageData, quality: f32) -> Result<Vec<u8>
             for y in 0..4 {
                 for x in 0..4 {
                     let index =
-                        (((block_y * 4 + y) * image.width + (block_x * 4 + x)) * 4) as usize;
+                        (((block_y * 4 + y) * width + (block_x * 4 + x)) * 4) as usize;
                     let pixel = [
-                        image.pixels[index],
-                        image.pixels[index + 1],
-                        image.pixels[index + 2],
-                        image.pixels[index + 3],
+                        pixels[index],
+                        pixels[index + 1],
+                        pixels[index + 2],
+                        pixels[index + 3],
                     ];
                     input_block[((y * 4 + x) * 4) as usize] = pixel[0];
                     input_block[(((y * 4 + x) * 4) + 1) as usize] = pixel[1];
@@ -182,12 +182,12 @@ pub fn decompress_image_bc7(width: u32, height: u32, data: &[u8]) -> Result<RGBA
     Ok(image_data)
 }
 
-pub fn compress_image_bc5(image: &RGBAImageData, quality: f32) -> Result<Vec<u8>> {
-    assert!(image.width % 4 == 0);
-    assert!(image.height % 4 == 0);
+pub fn compress_image_bc5(width: u32, height: u32, pixels: &[u8], quality: f32) -> Result<Vec<u8>> {
+    assert!(width % 4 == 0);
+    assert!(height % 4 == 0);
 
-    let width_in_blocks = image.width / 4;
-    let height_in_blocks = image.height / 4;
+    let width_in_blocks = width / 4;
+    let height_in_blocks = height / 4;
     let num_blocks = width_in_blocks * height_in_blocks;
 
     let mut input_block = [0_u8; 32];
@@ -206,8 +206,8 @@ pub fn compress_image_bc5(image: &RGBAImageData, quality: f32) -> Result<Vec<u8>
             for y in 0..4 {
                 for x in 0..4 {
                     let index =
-                        (((block_y * 4 + y) * image.width + (block_x * 4 + x)) * 4) as usize;
-                    let pixel = [image.pixels[index], image.pixels[index + 1]];
+                        (((block_y * 4 + y) * width + (block_x * 4 + x)) * 4) as usize;
+                    let pixel = [pixels[index], pixels[index + 1]];
                     input_block[(y * 4 + x) as usize] = pixel[0];
                     input_block[(16 + (y * 4 + x)) as usize] = pixel[1];
                 }
