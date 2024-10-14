@@ -5,7 +5,7 @@ use image::{Rgb, RgbImage};
 
 pub fn main() {
     let image_data = load_image_data("test.jpg").unwrap();
-    let compressed_data = compress_image_bc7(&image_data, 1.0).unwrap();
+    let compressed_data = compress_image_bc7(image_data.width, image_data.height, &image_data.pixels, 1.0).unwrap();
     let decompressed_data =
         decompress_image_bc7(image_data.width, image_data.height, &compressed_data).unwrap();
     let mut output_img = RgbImage::new(decompressed_data.width, decompressed_data.height);
